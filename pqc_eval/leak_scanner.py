@@ -99,14 +99,17 @@ def multi_fixed_scan(fn, fixed_input_fns, repeats: int = 5, per_vector: int = 40
     fixed_input_fns: list of zero-arg callables, each returning a fresh copy
                      of one fixed input (e.g. one fixed secret each).
     Returns ANOVA verdict + per-vector medians.
+
+    Measurement order is ROUND-ROBIN across vectors (v1,v2,...,vn,v1,v2,...)
+    so thermal/background drift hits every vector equally. A sequential
+    per-vector loop would confound drift with value — see experiment 03.
     """
-    groups = []
-    for make_input in fixed_input_fns:
-        args = make_input()
-        samples = [float(np.median([_measure_us(fn, *args)
-                                    for _ in range(reps)]))
-                   for _ in range(per_vector)]
-        groups.append(samples)
+    args_list = [m() for m in fixed_input_fns]
+    groups: list[list[float]] = [[] for _ in args_list]
+    for _ in range(per_vector):
+        for j, args in enumerate(args_list):
+            groups[j].append(float(np.median(
+                [_measure_us(fn, *args) for _ in range(repeats)])))
     F, p = stats.f_oneway(*groups)
     means = [float(np.mean(g)) for g in groups]
     return {

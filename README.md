@@ -15,6 +15,7 @@ pqc_eval/
 │                                  interleaved sampling vs thermal drift)
 ├── experiment_01_kyberslash.py # Leak reproduction w/ positive+negative controls
 ├── experiment_02_real_mlkem.py # Scan of REAL kyber_py ML-KEM-768 decaps
+├── experiment_03_cbacked_mlkem.py # Scan of C-backed native ML-KEM-768 (both methods)
 ├── audit_validation.py         # Adversarial self-audit (4 attacks on our claims)
 └── make_plots.py               # Publication-style visual proof (images/)
 ```
@@ -61,6 +62,24 @@ headline number was an artifact. The scanner now ships `multi_fixed_scan()`
   claims (seed swap, corner-artifact probe, nonparametric cross-checks,
   variance decomposition) and is part of the repo
 
+## Experiment 03 — C-backed ML-KEM-768 (pqcrypto, native Rust/C build)
+
+The scan that matters: native-speed crypto is what real systems ship. Both
+scanner methods, plus a methodology fix the experiment itself forced:
+
+| Method | Verdict | Evidence |
+|---|---|---|
+| [A] Single-vector fixed-vs-random TVLA | **NO LEAK** | p = 0.60, medians identical (91.4 vs 91.4 µs) |
+| [B] Multi-fixed-point ANOVA (10 typical cts) | **NO VALUE DEPENDENCE** | F = 0.28, p = 0.98, spread 1.04× |
+
+**Methodology lesson baked into the scanner:** v1 of `multi_fixed_scan`
+measured vector groups sequentially and flagged VALUE-DEPENDENT — but the
+"signal" was later-measured vectors drifting up under background load
+(machine drift, not value). Fixed with **round-robin interleaving** across
+vectors; the false positive vanished (p = 8e-14 → 0.98 under the same
+code path). Robustness bonus: verdicts held while the machine slowed 4×
+between runs (91 → 389 µs medians) — interleaving beats drift.
+
 ## Experiment 02 — real implementation scan (kyber_py ML-KEM-768)
 
 Pointing the validated scanner at production reference code — ML-KEM-768
@@ -80,6 +99,7 @@ before calling anything.
 - [x] Statistical core + controls (experiment 01)
 - [x] Adversarial self-audit — 4 attacks, 2 pass, 2 expose real limits (audit_validation.py)
 - [x] Scan real implementation — kyber_py ML-KEM-768 (experiment 02)
+- [x] Scan C-backed native ML-KEM-768 — clean; multi_fixed_scan round-robin fix (experiment 03)
 - [ ] Scan liboqs / C-backed bindings (where KyberSlash-class bugs live)
 - [ ] DPA-style correlation plots per secret byte
 - [ ] DPA-style correlation plots per secret byte
