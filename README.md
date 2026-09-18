@@ -16,6 +16,8 @@ pqc_eval/
 ├── experiment_01_kyberslash.py # Leak reproduction w/ positive+negative controls
 ├── experiment_02_real_mlkem.py # Scan of REAL kyber_py ML-KEM-768 decaps
 ├── experiment_03_cbacked_mlkem.py # Scan of C-backed native ML-KEM-768 (both methods)
+├── bb84/                       # BB84 QKD simulation (protocol + sweeps + plots)
+├── qrng/                       # Hadamard QRNG + entropy certification battery
 ├── audit_validation.py         # Adversarial self-audit (4 attacks on our claims)
 └── make_plots.py               # Publication-style visual proof (images/)
 ```
@@ -112,6 +114,25 @@ Key insight the plot shows: **noise mimics Eve** — the 11% QBER abort
 threshold can't tell a wiretap from a bad fiber, which is exactly why QKD
 hardware requires characterized channels.
 
+## QRNG — quantum random number generation (hackathon deliverable)
+
+True quantum bits via Aer: each bit is an independent measurement of
+|0⟩ —H→ |+⟩ (perfect 50/50 superposition). Certified with an entropy battery
+(monobit frequency, Wald–Wolfowitz runs, serial-pairs chi-square, lag-1
+autocorrelation, Shannon entropy) over 40,000 bits per source:
+
+| Source | freq_p | runs_p | serial_p | ac_p | H (bits) | Verdict |
+|---|---|---|---|---|---|---|
+| **QUANTUM (Aer Hadamard)** | 0.545 | 0.967 | 0.882 | 0.963 | 0.99999 | **PASS** |
+| CLASSICAL (numpy PCG64) | 0.723 | 0.020 | 0.289 | 0.020 | 1.00000 | PASS |
+| BIASED control 60/40 | 0.0000 | 0.759 | 0.0000 | 0.755 | 0.970 | **FAIL** ✅ |
+
+The battery has power: the biased source is caught decisively, and both fair
+sources pass. (The classical PRNG's runs/autocorr p ≈ 0.02 is a reminder that
+PRNGs are "random enough" but not quantum — fine for simulations, not for keys.)
+
+![QRNG walks](images/qrng_walks.png)
+
 ## Roadmap
 
 - [x] Statistical core + controls (experiment 01)
@@ -119,6 +140,7 @@ hardware requires characterized channels.
 - [x] Scan real implementation — kyber_py ML-KEM-768 (experiment 02)
 - [x] Scan C-backed native ML-KEM-768 — clean; multi_fixed_scan round-robin fix (experiment 03)
 - [x] BB84 QKD simulation — QBER matches theory incl. 25% intercept-resend signature (bb84/)
+- [x] QRNG + entropy certification — quantum PASS / biased FAIL, with walk plots (qrng/)
 - [ ] Scan liboqs / C-backed bindings (where KyberSlash-class bugs live)
 - [ ] DPA-style correlation plots per secret byte
 - [ ] DPA-style correlation plots per secret byte
