@@ -86,6 +86,39 @@ def leakage_report(t: dict) -> dict:
     }
 
 
+def multi_fixed_scan(fn, fixed_input_fns, repeats: int = 5, per_vector: int = 40) -> dict:
+    """Multi-fixed-point variance analysis (stronger than single-vector TVLA).
+
+    Motivation (see audit_validation.py, ATTACK 2): a single TYPICAL fixed
+    vector can fail to separate from random inputs even when timing genuinely
+    depends on the secret value — separation via one vector requires the
+    vector to sit at a timing extreme. Instead, measure MANY typical fixed
+    vectors and test whether the vector's VALUE explains timing variance
+    (one-way ANOVA F-test across vector means).
+
+    fixed_input_fns: list of zero-arg callables, each returning a fresh copy
+                     of one fixed input (e.g. one fixed secret each).
+    Returns ANOVA verdict + per-vector medians.
+    """
+    groups = []
+    for make_input in fixed_input_fns:
+        args = make_input()
+        samples = [float(np.median([_measure_us(fn, *args)
+                                    for _ in range(reps)]))
+                   for _ in range(per_vector)]
+        groups.append(samples)
+    F, p = stats.f_oneway(*groups)
+    means = [float(np.mean(g)) for g in groups]
+    return {
+        "verdict": "VALUE-DEPENDENT" if p < 0.01 else "NO VALUE DEPENDENCE",
+        "anova_F": round(float(F), 2),
+        "anova_p": float(p),
+        "n_vectors": len(groups),
+        "vector_means_us": [round(m, 1) for m in means],
+        "spread_ratio": round(max(means) / min(means), 3) if min(means) > 0 else None,
+    }
+
+
 def scan(fn, fixed_input_fn, random_inputs, repeats: int = 5) -> dict:
     """One-call API: collect + report.
 
