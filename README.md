@@ -143,9 +143,6 @@ PRNGs are "random enough" but not quantum — fine for simulations, not for keys
 - [x] QRNG + entropy certification — quantum PASS / biased FAIL, with walk plots (qrng/)
 - [ ] Scan liboqs / C-backed bindings (where KyberSlash-class bugs live)
 - [ ] DPA-style correlation plots per secret byte
-- [ ] DPA-style correlation plots per secret byte
-- [ ] BB84 QKD simulation module (hackathon deliverable)
-- [ ] QRNG + entropy certification module (hackathon deliverable)
 - [ ] CI-friendly CLI: `pqc-scan <module>.<fn> --inputs ...`
 
 ## Run it
