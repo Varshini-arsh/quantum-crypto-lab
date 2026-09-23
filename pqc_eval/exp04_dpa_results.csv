@@ -1,0 +1,17 @@
+target,byte,correlation_r,p_value,significant_p_lt_0_01
+vulnerable_loopcount,0,0.075525,0.28782501494698715,False
+vulnerable_loopcount,1,0.038239,0.5908658528310363,False
+vulnerable_loopcount,2,0.066913,0.3464897060296653,False
+vulnerable_loopcount,3,0.01343,0.8502920532612045,False
+vulnerable_loopcount,4,0.183348,0.009356443705118164,True
+vulnerable_loopcount,5,0.132313,0.061805965640189246,False
+vulnerable_loopcount,6,0.073843,0.29872687291624833,False
+vulnerable_loopcount,7,0.019781,0.780992993499666,False
+constanttime_lookup,0,-0.066637,0.34849034281400315,False
+constanttime_lookup,1,-0.04687,0.5098611096258573,False
+constanttime_lookup,2,-0.042965,0.5457881340309995,False
+constanttime_lookup,3,-0.00584,0.9345900787887549,False
+constanttime_lookup,4,-0.151657,0.03205456485521586,False
+constanttime_lookup,5,-0.003133,0.9648777088751554,False
+constanttime_lookup,6,-0.018038,0.7998658657876184,False
+constanttime_lookup,7,0.073622,0.30017609728043143,False

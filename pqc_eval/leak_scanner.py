@@ -130,3 +130,25 @@ def scan(fn, fixed_input_fn, random_inputs, repeats: int = 5) -> dict:
     random_inputs:  list of input tuples, one per sample.
     """
     return leakage_report(collect_timings(fn, fixed_input_fn, random_inputs, repeats))
+
+
+def dpa_correlation(timings, secrets) -> dict:
+    """Correlate execution time with each secret byte."""
+    y = np.asarray(timings, dtype=float)
+    x = np.asarray(secrets, dtype=np.uint8)
+    if x.ndim != 2 or y.shape[0] != x.shape[0]:
+        raise ValueError("secrets must be a 2-D array matching timings")
+    if len(y) < 3:
+        raise ValueError("at least three samples are required")
+    correlations, p_values = [], []
+    for column in x.T:
+        result = stats.pearsonr(column.astype(float), y)
+        correlations.append(float(result.statistic))
+        p_values.append(float(result.pvalue))
+    r = np.asarray(correlations)
+    peak = int(np.argmax(np.abs(r)))
+    return {"correlations": [round(v, 6) for v in correlations],
+            "p_values": p_values, "peak_byte": peak,
+            "peak_r": float(r[peak]), "peak_abs_r": float(abs(r[peak])),
+            "significant_bytes": [int(i) for i in np.flatnonzero(np.asarray(p_values) < 0.01)],
+            "n_samples": int(len(y)), "n_bytes": int(x.shape[1])}
