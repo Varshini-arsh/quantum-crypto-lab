@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "quantum-crypto-lab"
+version = "0.2.0"
+description = "Timing side-channel experiments and quantum-security demonstrations"
+requires-python = ">=3.10"
+dependencies = ["numpy", "scipy"]
+
+[project.scripts]
+pqc-scan = "pqc_eval.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["pqc_eval*", "bb84*", "qrng*"]
