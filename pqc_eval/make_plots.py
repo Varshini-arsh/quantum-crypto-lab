@@ -34,18 +34,16 @@ def box_and_strip(fixed, rnd, title, subtitle, fname):
         med = np.median(data)
         ax.hlines(y, med, med, color=color, lw=0)  # no-op keep colors
         ax.plot([med], [y], marker="D", color="white", mec=color, ms=9, zorder=5)
-        ax.text(med, y + 0.14, f"median {med:.1f} µs", ha="center",
-                fontsize=9, color=color, fontweight="bold")
 
     ax.set_yticks([1, 0])
     ax.set_yticklabels(["FIXED\ninput", "RANDOM\ninputs"], fontsize=10)
-    ax.set_xlabel("decapsulation time (µs)", fontsize=10)
-    ax.set_title(title, fontsize=12, fontweight="bold", loc="left")
-    ax.text(0, 1.02, subtitle, transform=ax.transAxes, fontsize=9, color="#555")
+    ax.set_xlabel("execution time (microseconds)", fontsize=10)
+    ax.set_title(title, fontsize=12, fontweight="bold", loc="left", pad=10)
+    ax.text(0, -0.22, subtitle, transform=ax.transAxes, fontsize=8, color="#555", va="top")
     ax.set_ylim(-0.5, 1.5)
     ax.spines[["top", "right"]].set_visible(False)
     ax.grid(axis="x", alpha=0.25)
-    fig.tight_layout()
+    fig.tight_layout(rect=[0, 0.06, 1, 1])
     fig.savefig(os.path.join(IMG, fname), bbox_inches="tight")
     plt.close(fig)
     print("wrote", fname)
@@ -67,7 +65,7 @@ def main():
     box_and_strip(
         t_vuln["fixed"], t_vuln["random"],
         "Vulnerable: secret-dependent loop count",
-        "t = -86.3, p = 1.6e-168, Cohen's d = 8.65  →  LEAK DETECTED",
+        "multi-fixed ANOVA F = 10.0, p = 8.1e-14 -> VALUE-DEPENDENT LEAK",
         "exp01_vulnerable_leak.png")
 
     t_ct = collect_timings(constanttime_lookup,
@@ -76,7 +74,7 @@ def main():
     box_and_strip(
         t_ct["fixed"], t_ct["random"],
         "Constant-time: masked table lookup",
-        "t = 0.17, p = 0.87  →  NO LEAK (scanner correctly silent)",
+        "p = 0.97 -> NO LEAK DETECTED (scanner correctly silent)",
         "exp01_constanttime_clean.png")
 
     # --- Experiment 02 (real ML-KEM) from saved pickle
@@ -88,7 +86,7 @@ def main():
         box_and_strip(
             d["fixed"], d["random"],
             "REAL ML-KEM-768 decapsulation (kyber_py)",
-            f"t = {r['welch_t']}, p = {r['p_value']:.2f}  →  {r['verdict']}",
+            f"t = {r['welch_t']}, p = {r['p_value']:.2f} -> {r['verdict']}",
             "exp02_real_mlkem.png")
 
 
