@@ -42,7 +42,7 @@ tests/                          # 15 automated tests (pytest): core, controls,
 | 01 | Constant-time table lookup (negative control) | NO LEAK | p = 0.97 |
 | 02 | kyber_py ML-KEM-768 (pure-Python ref) | NO LEAK | p = 0.84, d = −0.02 |
 | 03 | pqcrypto ML-KEM-768 (C/Rust build) | NO LEAK / NO VALUE DEPENDENCE | p = 0.60 / 0.98 |
-| 04 | DPA per-byte correlation, vulnerable target | byte 4 localized | r = 0.183, p = 0.009 |
+| 04 | DPA per-byte correlation, vulnerable target | leak present, **not** localized | uniformly elevated |r| across all 8 bytes |
 | 05 | liboqs ML-KEM-768 (reference C, oqs.dll) | NO LEAK / NO VALUE DEPENDENCE | p = 0.74 / 0.9997 |
 | — | BB84 QKD sim | QBER matches theory | 25.06% vs 25% intercept-resend |
 | — | QRNG (Aer Hadamard) | PASS (biased control FAIL) | H = 0.99999 bits |
@@ -155,18 +155,37 @@ PRNGs are "random enough" but not quantum — fine for simulations, not for keys
 ## Experiment 04 — DPA-style correlation by secret byte
 
 Classic differential-power-analysis logic, applied to timing: correlate execution
-time with each secret byte across many random keys. This is the strongest test of
-*where* a leak lives, not just *whether* one exists.
+time with each secret byte across many random keys, to test *where* a leak
+lives, not just *whether* one exists.
 
-| Target | Flagged bytes (p < 0.01) | Peak |
+### ⚠️ Self-audit correction (published as part of the method)
+
+v1 of this experiment ran **one trial** and reported "byte 4 localized"
+(r = 0.183, p = 0.0094). Applying the same skepticism this repo already
+applies to the main leak claim (see the 5.5× corner-artifact correction
+above), we reran the identical experiment as 5 independent trials. The
+"peak" byte was **different in every trial** (byte 4, 7, 3, 7, 2 across five
+reruns), including one trial where byte 4 itself scored r ≈ 0. This is
+expected: `leaky_loopcount` sums a bit-length-derived value across all 8
+byte positions symmetrically, so there is no mechanism for one position to
+be more responsible than another — and testing 8 positions at p<0.01 with no
+multiple-comparison correction will flag roughly one of them by chance on
+any given run, regardless of which one.
+
+**Corrected finding:** averaged over 5 trials, the vulnerable target shows
+**uniformly elevated |r| across all 8 byte positions** (~0.08–0.14) versus
+the constant-time control (~0.03–0.07 everywhere, no standout). The leak is
+real and the per-byte method correctly separates vulnerable from
+constant-time — it just isn't localized to a single byte for this bug
+class, which is the structurally correct result, not a weaker one.
+
+| Target | Mean \|r\| across bytes (5 trials) | Stable single-byte localization? |
 |---|---|---|
-| Vulnerable loop-count | **byte 4 only** | r = 0.183, p = 0.0094 |
-| Constant-time lookup | none | max \|r\| = 0.152, p = 0.032 |
+| Vulnerable loop-count | ~0.08–0.14 (elevated everywhere) | No — peak byte varies every trial |
+| Constant-time lookup | ~0.03–0.07 (low everywhere) | No — as expected for a clean target |
 
-The vulnerable target is localized to a single byte position while the
-constant-time control stays clean everywhere — the scanner doesn't just detect
-the leak, it points at it. Full grid: `pqc_eval/exp04_dpa_results.csv`,
-plot below.
+Per-trial data: `pqc_eval/exp04_dpa_results.csv`. Stability summary (times
+each byte was flagged significant across 5 trials): `pqc_eval/exp04_dpa_stability.csv`.
 
 ![DPA correlation](images/exp04_dpa_correlation.png)
 
@@ -200,7 +219,7 @@ liboqs build; see `thirdparty/` notes below).
 - [x] Scan C-backed native ML-KEM-768 — clean; multi_fixed_scan round-robin fix (experiment 03)
 - [x] BB84 QKD simulation — QBER matches theory incl. 25% intercept-resend signature (bb84/)
 - [x] QRNG + entropy certification — quantum PASS / biased FAIL, with walk plots (qrng/)
-- [x] DPA-style correlation per secret byte — vulnerable target localized (byte 4, p=0.009), constant-time clean (pqc_eval/exp04_dpa_results.csv)
+- [x] DPA-style correlation per secret byte — 5-trial stability check found the leak's effect is spread across all bytes, not localized to one (self-audit corrected an earlier single-trial "byte 4" overclaim; see Experiment 04)
 - [x] liboqs native scan (experiment 05) — built from source, CLEAN on both methods
 - [x] CI-friendly CLI: `python -m pqc_eval.cli <module>.<fn> [--n-samples N] [--key-len B]` — exit 1 on LEAK DETECTED
 - [x] Automated tests: `python -m pytest tests/` (15 tests: statistical core,

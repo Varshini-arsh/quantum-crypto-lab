@@ -1,0 +1,17 @@
+target,byte,times_significant,n_trials,mean_abs_r
+vulnerable_loopcount,0,1,5,0.142635
+vulnerable_loopcount,1,0,5,0.090425
+vulnerable_loopcount,2,1,5,0.128655
+vulnerable_loopcount,3,1,5,0.095399
+vulnerable_loopcount,4,1,5,0.142495
+vulnerable_loopcount,5,0,5,0.095585
+vulnerable_loopcount,6,0,5,0.093786
+vulnerable_loopcount,7,1,5,0.106084
+constanttime_lookup,0,0,5,0.063972
+constanttime_lookup,1,0,5,0.05523
+constanttime_lookup,2,0,5,0.049984
+constanttime_lookup,3,0,5,0.069946
+constanttime_lookup,4,0,5,0.069604
+constanttime_lookup,5,0,5,0.056541
+constanttime_lookup,6,0,5,0.035081
+constanttime_lookup,7,0,5,0.071292

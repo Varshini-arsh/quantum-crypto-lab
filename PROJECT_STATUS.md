@@ -32,7 +32,7 @@ Last updated: 2026-09-23 · Repo: https://github.com/Varshini-arsh/quantum-crypt
 | Exp 01: validated scanner + controls + plots | ✅ DONE (Day 1) |
 | Exp 02: real kyber_py ML-KEM-768 scan | ✅ DONE |
 | Exp 03: C-backed pqcrypto scan + round-robin drift fix | ✅ DONE |
-| Exp 04: per-byte DPA correlation (byte 4, p=0.009) | ✅ DONE |
+| Exp 04: per-byte DPA correlation (5-trial stability check; not localized to one byte, self-audit corrected) | ✅ DONE |
 | Exp 05: liboqs native scan (built oqs.dll, CLEAN) | ✅ DONE |
 | bb84/ (QKD sim, QBER matches theory) | ✅ DONE |
 | qrng/ (Hadamard QRNG + entropy battery) | ✅ DONE |
