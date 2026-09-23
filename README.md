@@ -16,10 +16,16 @@ pqc_eval/
 ├── experiment_01_kyberslash.py # Leak reproduction w/ positive+negative controls
 ├── experiment_02_real_mlkem.py # Scan of REAL kyber_py ML-KEM-768 decaps
 ├── experiment_03_cbacked_mlkem.py # Scan of C-backed native ML-KEM-768 (both methods)
+├── experiment_04_dpa.py        # DPA-style per-secret-byte timing correlation
+├── experiment_05_liboqs_mlkem.py # Scan of liboqs (reference C) ML-KEM-768
+├── cli.py                      # `python -m pqc_eval.cli <module>.<fn>` — exit 1 on leak
 ├── bb84/                       # BB84 QKD simulation (protocol + sweeps + plots)
 ├── qrng/                       # Hadamard QRNG + entropy certification battery
 ├── audit_validation.py         # Adversarial self-audit (4 attacks on our claims)
 └── make_plots.py               # Publication-style visual proof (images/)
+
+tests/                          # 15 automated tests (pytest): core, controls,
+                                # BB84 theory, QRNG battery power, CLI exit codes
 ```
 
 ## Visual proof
@@ -27,6 +33,19 @@ pqc_eval/
 | Vulnerable (5.5× timing gap) | Constant-time (clean) | Real ML-KEM-768 |
 |---|---|---|
 | ![leak](images/exp01_vulnerable_leak.png) | ![clean](images/exp01_constanttime_clean.png) | ![mlkem](images/exp02_real_mlkem.png) |
+
+## Results at a glance
+
+| # | Target | Verdict | Headline stat |
+|---|---|---|---|
+| 01 | Secret-dependent loop count (vulnerable control) | **VALUE-DEPENDENT LEAK** | ANOVA p = 8.1e−14 |
+| 01 | Constant-time table lookup (negative control) | NO LEAK | p = 0.97 |
+| 02 | kyber_py ML-KEM-768 (pure-Python ref) | NO LEAK | p = 0.84, d = −0.02 |
+| 03 | pqcrypto ML-KEM-768 (C/Rust build) | NO LEAK / NO VALUE DEPENDENCE | p = 0.60 / 0.98 |
+| 04 | DPA per-byte correlation, vulnerable target | byte 4 localized | r = 0.183, p = 0.009 |
+| 05 | liboqs ML-KEM-768 (reference C, oqs.dll) | NO LEAK / NO VALUE DEPENDENCE | p = 0.74 / 0.9997 |
+| — | BB84 QKD sim | QBER matches theory | 25.06% vs 25% intercept-resend |
+| — | QRNG (Aer Hadamard) | PASS (biased control FAIL) | H = 0.99999 bits |
 
 ## Validated results (Windows 11, CPython 3.12, laptop CPU)
 
@@ -133,6 +152,46 @@ PRNGs are "random enough" but not quantum — fine for simulations, not for keys
 
 ![QRNG walks](images/qrng_walks.png)
 
+## Experiment 04 — DPA-style correlation by secret byte
+
+Classic differential-power-analysis logic, applied to timing: correlate execution
+time with each secret byte across many random keys. This is the strongest test of
+*where* a leak lives, not just *whether* one exists.
+
+| Target | Flagged bytes (p < 0.01) | Peak |
+|---|---|---|
+| Vulnerable loop-count | **byte 4 only** | r = 0.183, p = 0.0094 |
+| Constant-time lookup | none | max \|r\| = 0.152, p = 0.032 |
+
+The vulnerable target is localized to a single byte position while the
+constant-time control stays clean everywhere — the scanner doesn't just detect
+the leak, it points at it. Full grid: `pqc_eval/exp04_dpa_results.csv`,
+plot below.
+
+![DPA correlation](images/exp04_dpa_correlation.png)
+
+## Experiment 05 — liboqs native ML-KEM-768 (the reference implementation)
+
+liboqs (open-quantum-safe) is what real systems actually build on — the exact
+place KyberSlash-class bugs live. Built from source (MSVC/x64, oqs.dll) and
+scanned with the same two-method protocol as experiment 03:
+
+| Method | Verdict | Evidence |
+|---|---|---|
+| [A] Single-vector fixed-vs-random TVLA | **NO LEAK** | p = 0.74, medians identical (90.3 vs 90.3 µs) |
+| [B] Multi-fixed-point ANOVA (10 typical cts) | **NO VALUE DEPENDENCE** | F = 0.10, p = 0.9997, spread 1.06× |
+
+Cross-implementation scoreboard (all ML-KEM-768 decaps, same machine/method):
+
+| Stack | [A] TVLA | [B] ANOVA |
+|---|---|---|
+| kyber_py (pure-Python ref) | NO LEAK | — |
+| pqcrypto (C/Rust build) | NO LEAK | NO VALUE DEPENDENCE |
+| **liboqs (C, reference)** | **NO LEAK** | **NO VALUE DEPENDENCE** |
+
+Reproduce with `python pqc_eval/experiment_05_liboqs_mlkem.py` (needs a local
+liboqs build; see `thirdparty/` notes below).
+
 ## Roadmap
 
 - [x] Statistical core + controls (experiment 01)
@@ -141,13 +200,30 @@ PRNGs are "random enough" but not quantum — fine for simulations, not for keys
 - [x] Scan C-backed native ML-KEM-768 — clean; multi_fixed_scan round-robin fix (experiment 03)
 - [x] BB84 QKD simulation — QBER matches theory incl. 25% intercept-resend signature (bb84/)
 - [x] QRNG + entropy certification — quantum PASS / biased FAIL, with walk plots (qrng/)
-- [ ] Scan liboqs / C-backed bindings (where KyberSlash-class bugs live)
-- [ ] DPA-style correlation plots per secret byte
-- [ ] CI-friendly CLI: `pqc-scan <module>.<fn> --inputs ...`
+- [x] DPA-style correlation per secret byte — vulnerable target localized (byte 4, p=0.009), constant-time clean (pqc_eval/exp04_dpa_results.csv)
+- [x] liboqs native scan (experiment 05) — built from source, CLEAN on both methods
+- [x] CI-friendly CLI: `python -m pqc_eval.cli <module>.<fn> [--n-samples N] [--key-len B]` — exit 1 on LEAK DETECTED
+- [x] Automated tests: `python -m pytest tests/` (15 tests: statistical core,
+      positive/negative controls, BB84 theory, QRNG battery power, CLI exit codes)
+- [ ] nanosecond-resolution C-level timing harness (hardware/rdtsc; laptop perf_counter is µs-scale)
 
 ## Run it
 
 ```bash
-pip install numpy scipy
-python pqc_eval/experiment_01_kyberslash.py
+pip install numpy scipy matplotlib
+python pqc_eval/experiment_01_kyberslash.py     # full validated scan + controls
+python -m pytest tests/ -v                      # automated checks (seconds)
+python -m pqc_eval.cli yourpkg.decaps --n-samples 300   # scan YOUR code
+```
+
+### Building liboqs locally (for experiment 05)
+
+```bash
+git clone https://github.com/open-quantum-safe/liboqs thirdparty/liboqs
+cmake -S thirdparty/liboqs -B thirdparty/liboqs/build -G Ninja \
+      -DBUILD_SHARED_LIBS=ON -DOQS_USE_OPENSSL=OFF \
+      -DCMAKE_INSTALL_PREFIX=thirdparty/liboqs-install
+cmake --build thirdparty/liboqs/build --target oqs.dll
+export OQS_INSTALL_PATH=$(pwd)/thirdparty/liboqs-install
+python pqc_eval/experiment_05_liboqs_mlkem.py
 ```

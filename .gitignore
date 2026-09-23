@@ -4,3 +4,5 @@ __pycache__/
 .ipynb_checkpoints/
 *.wav
 *.pkl
+*.log
+thirdparty/
